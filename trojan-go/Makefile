@@ -31,6 +31,20 @@ GO_PKG_TAGS:=full
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
+define Package/trojan-go/config
+config TROJAN_GO_COMPRESS_GOPROXY
+	bool "Compiling with GOPROXY proxy"
+	default n
+
+config TROJAN_GO_COMPRESS_UPX
+	bool "Compress executable files with UPX"
+	default y
+endef
+
+ifeq ($(CONFIG_TROJAN_GO_COMPRESS_GOPROXY),y)
+	export GO111MODULE=on
+	export GOPROXY=https://goproxy.baidu.com
+endif
 define Package/trojan-go
   SECTION:=net
   CATEGORY:=Network
@@ -44,6 +58,21 @@ define Package/trojan-go/description
   Trojan features multiple protocols over TLS to avoid both
   active/passive detections and ISP QoS limitations.
 endef
+
+define Build/Compile
+	$(call GoPackage/Build/Compile)
+ifeq ($(CONFIG_TROJAN_GO_COMPRESS_UPX),y)
+	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(GO_PKG_BUILD_BIN_DIR)/trojan-go
+endif
+endef
+define Package/trojan-go/install
+	$(call GoPackage/Package/Install/Bin,$(PKG_INSTALL_DIR))
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/trojan-go $(1)/usr/bin/$(PKG_NAME)
+	$(LN) trojan $(1)/usr/bin/trojan-go
+	$(LN) trojan-plus $(1)/usr/bin/trojan-go
+endef
+
 
 $(eval $(call GoBinPackage,trojan-go))
 $(eval $(call BuildPackage,trojan-go))
